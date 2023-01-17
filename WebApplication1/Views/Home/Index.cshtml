@@ -1,0 +1,76 @@
+﻿@{
+    ViewData["Title"] = "Home Page";
+}
+
+@section Scripts
+{
+    <script src="~/lib/microsoft/signalr/dist/browser/signalr.min.js"></script>
+    <script type="text/javascript">
+        $(document).ready(() => {
+            var connection = new signalR.HubConnectionBuilder().withAutomaticReconnect([1000, 2000, 3000, 4000]).withUrl("http://localhost:7107/MyHub").build();
+            //withAutomaticReconnect([1000, 2000, 3000, 4000]) kısmı ile diyelimki bağlantıdan düştük.belli periyotlarda sunucuya istek atarak tekrar bağlanmaya çalışıyoruz.(1. saniye,2.saniye gibi oluşturduk burda)
+
+            $("#conStatus").text(connection.connectionState); //Bağlantının en baştaki durumunu göstercek
+
+            connection.start().then(() => { //Bağlantıyı başlat
+                $("#conStatus").text(connection.connectionState); //Eğer bağlanmayı başarırsa bağlantı durumunu göstercek.
+                $("#loading").hide();//Başlangıçta spinner bi gözüküp kaybolcak.
+            }).catch((err) => { console.log(err) }); //Bağlanmazsa hatayı console da yazdıracak
+
+            $("#btnsave").click(() => {
+                connection.invoke("SendName", $("#txtname").val()).catch((err) => {//bir şey gönderirken(eklerken) sendname metodunu çağırdık.aşağıdaki on ile de gösterdik
+                    console.log(err)//ekleme işlemi sırasında hata olursa console da yazdırcak
+                });
+
+            })
+            connection.on("ReceiveName", (name) => { //eklediğim kişinin ismini konsolda görmek için. on burada bir nevi subscribe işlemi görecek yani burada receivename e abone olma gibi.
+                /*console.log(name);*/
+                $("#nameslist").append(`<li class="list-group-item">${name}</li>`); //ekranda ekleme yaptıklarımızı getirmek için.
+            })
+
+            connection.onreconnecting(err => {//yeniden bağlanırken bize
+                $("#loading").show(); //spinner ve
+                $("#conStatus").text(connection.connectionState);//bağlantı durumu ekrana yazılacak.
+            });
+
+            connection.reconnected(connectionID => { //yeniden bağlanırsa
+                $("#loading").hide();//spinner kaybolcak ve
+                $("#conStatus").text(connection.connectionState);//bağlantı durumu ekrana yazılacak.(connected gibi)
+            });
+
+            connection.on("ReceiveClientCount", (ClientCount) => { //Kaç tane kullanıcımız aktif onu göstercek
+                $("#clientCount").text(ClientCount);
+            })
+        })
+
+
+    </script>
+
+}
+<div class="row">
+    <div class="col-md-8 offset-2">
+        <input type="text" id="txtname" class="form-control" />
+        <hr />
+        <button class="btn btn-primary" id="btnsave">Kişiyi Ekle</button>
+        <div class="alert alert-success mt-2">
+            <div class="float-left">
+                Bağlantı Durumu:<strong id="conStatus"></strong>
+                Client Sayısı:<strong id="clientCount"></strong>
+            </div>
+
+            <div class="float-right">
+                @*tekrar bağlanmaya çalışırken spinner göstercek ekranda bize*@
+                <div id="loading" class="spinner-border" role="status">
+                    <span class="visually-hidden"></span>
+                </div>
+            </div>
+
+            <div class="clearfix"></div>
+        </div>
+    </div>
+    <div class="col-md-8 offset-2">
+        @*ekleme işlemi ile ilgili kısım*@
+        <ul class="list-group" id="nameslist"></ul>
+    </div>
+</div>
+
