@@ -33,14 +33,53 @@
                 $("#conStatus").text(connection.connectionState);//bağlantı durumu ekrana yazılacak.
             });
 
-            connection.reconnected(connectionID => { //yeniden bağlanırsa
+            connection.onreconnected(connectionID => { //yeniden bağlanırsa
                 $("#loading").hide();//spinner kaybolcak ve
                 $("#conStatus").text(connection.connectionState);//bağlantı durumu ekrana yazılacak.(connected gibi)
             });
 
             connection.on("ReceiveClientCount", (ClientCount) => { //Kaç tane kullanıcımız aktif onu göstercek
                 $("#clientCount").text(ClientCount);
+            });
+
+            connection.on("Notify", (countText) => {//Başlangıçta bu odaya max x kadar kişi girebilir gibi bir uyarı vercek
+                $("#notify").html(`<div class="alert alert-success">${countText}</div>`)
+            });
+            connection.on("Error", (errorText) => {
+                alert(errorText);//Kişi sayısı 7yi geçince uyarı vercek.
+            });
+            $("#btnroomname").click(() => {//Odalara kişi ekleme
+                let name = $("#txtname").val();
+                let roomname = $("input[type=radio]:checked").val();
+                if (roomname == null) {
+                    alert("Lütfen 1 tane oda seçiniz");
+                }
+                connection.invoke("SendNameByRoom", name, roomname).catch((err) => {
+                    console.log(err);
+                })
+            });
+            connection.on("ReceiveMessageByGroup", (name, roomID) => {
+                let listName;
+                if (roomID == 1) {
+                    listName = "AnkaraRoomList"
+                }
+                else {
+                    listName = "BursaRoomList"
+                }
+                $(`#${listName}`).append(`<li class="list-group-item">${name}</li>`)
             })
+            $("input[type=radio]").change(() => {//farklı şehir grubuna geçerse önceki gruptan silme kodları
+                let value = $(`input[type=radio]:checked`).val();
+                if (value == "Ankara") {
+                    connection.invoke("AddToGroup", value);
+                    connection.invoke("RemoveToGroup", "Bursa");
+                }
+                else {
+                    connection.invoke("AddToGroup", value);
+                    connection.invoke("RemoveToGroup", "Ankara");
+                }
+            })
+
         })
 
 
@@ -52,6 +91,7 @@
         <input type="text" id="txtname" class="form-control" />
         <hr />
         <button class="btn btn-primary" id="btnsave">Kişiyi Ekle</button>
+        <button class="btn btn-danger" id="btnroomname">Odaya Kişiyi Ekle</button>
         <div class="alert alert-success mt-2">
             <div class="float-left">
                 Bağlantı Durumu:<strong id="conStatus"></strong>
@@ -67,10 +107,38 @@
 
             <div class="clearfix"></div>
         </div>
+        <div id="notify"></div>  @*max odadaki kişi sayısı ile ilgili kısım*@
     </div>
     <div class="col-md-8 offset-2">
         @*ekleme işlemi ile ilgili kısım*@
         <ul class="list-group" id="nameslist"></ul>
+    </div>
+</div>
+
+<div class="row"> @*Odalara kişi ekleme tasarımı*@
+    <div class="col-md-8 offset-md-2">
+        <div class="form-check form-check-inline">
+            <input class="form-check-input" type="radio" name="roomgroup" value="Ankara" />
+            <label class="form-check-label">Ankara Odası</label>
+        </div>
+        <div class="form-check form-check-inline">
+            <input class="form-check-input" type="radio" name="roomgroup" value="Bursa" />
+            <label class="form-check-label">Bursa Odası</label>
+        </div>
+    </div>
+    <div class="col-md-8 offset-2">
+        <div class="row">
+            <div class="col-md-6">
+                <h2>Ankara Odası</h2>
+                <ul class="list-group" id="AnkaraRoomList">
+                </ul>
+            </div><div class="col-md-6">
+                <h2>Bursa Odası</h2>
+                <ul class="list-group" id="BursaRoomList">
+                </ul>
+
+            </div>
+        </div>
     </div>
 </div>
 
